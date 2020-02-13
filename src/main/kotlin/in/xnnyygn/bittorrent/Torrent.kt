@@ -1,12 +1,19 @@
 package `in`.xnnyygn.bittorrent
 
+import `in`.xnnyygn.bittorrent.bencode.BEncodeElement
+import `in`.xnnyygn.bittorrent.bencode.BEncodeParser
+import `in`.xnnyygn.bittorrent.bencode.DictionaryElement
 import java.io.File
 
-class TorrentInfoFile(val length: Long, val path: String)
+data class TorrentInfoFile(val length: Long, val path: String)
 
-class TorrentInfo(val files: List<TorrentInfoFile>, val name: String, val pieceLength: Int, val pieces: ByteArray)
+class TorrentInfo(val files: List<TorrentInfoFile>, val name: String, val pieceLength: Int, val pieces: ByteArray) {
+    override fun toString(): String {
+        return "TorrentInfo(files=$files, name='$name', pieceLength=$pieceLength, pieces.size=${pieces.size})"
+    }
+}
 
-class Torrent(val announce: String, val info: TorrentInfo) {
+data class Torrent(val announce: String, val info: TorrentInfo) {
     companion object {
         fun fromFile(file: File): Torrent {
             val parser = BEncodeParser(file.inputStream())
