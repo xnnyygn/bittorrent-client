@@ -27,34 +27,39 @@ class TrackerException(msg: String, cause: Throwable?) : RuntimeException(msg, c
 }
 
 interface Tracker {
-    suspend fun findPeers(clientStatus: ClientStatus, started: Boolean = false): TrackerResponse
+    suspend fun findPeers(uploaded: Long, downloaded: Long, left: Long, firstRequest: Boolean = false): TrackerResponse
 
-    suspend fun stop(clientStatus: ClientStatus)
+    suspend fun stop(uploaded: Long, downloaded: Long, left: Long)
 }
 
 abstract class AbstractTracker(private val infoHash: ByteArray, private val selfPeer: Peer) : Tracker {
-    override suspend fun findPeers(clientStatus: ClientStatus, started: Boolean): TrackerResponse {
+    override suspend fun findPeers(
+        uploaded: Long,
+        downloaded: Long,
+        left: Long,
+        firstRequest: Boolean
+    ): TrackerResponse {
         val event = when {
-            clientStatus.isCompleted -> PeerEvent.COMPLETED
-            started -> PeerEvent.STARTED
+            left == 0L -> PeerEvent.COMPLETED
+            firstRequest -> PeerEvent.STARTED
             else -> PeerEvent.EMPTY
         }
-        return send(makeRequest(clientStatus, event))
+        return send(makeRequest(uploaded, downloaded, left, event))
     }
 
-    private fun makeRequest(clientStatus: ClientStatus, event: PeerEvent) = TrackerRequest(
+    private fun makeRequest(uploaded: Long, downloaded: Long, left: Long, event: PeerEvent) = TrackerRequest(
         infoHash,
         selfPeer.id,
         selfPeer.ip,
         selfPeer.port,
-        clientStatus.uploaded,
-        clientStatus.downloaded,
-        clientStatus.left,
+        uploaded,
+        downloaded,
+        left,
         event
     )
 
-    override suspend fun stop(clientStatus: ClientStatus) {
-        send(makeRequest(clientStatus, PeerEvent.STOPPED))
+    override suspend fun stop(uploaded: Long, downloaded: Long, left: Long) {
+        send(makeRequest(uploaded, downloaded, left, PeerEvent.STOPPED))
     }
 
     internal abstract suspend fun send(request: TrackerRequest): TrackerResponse

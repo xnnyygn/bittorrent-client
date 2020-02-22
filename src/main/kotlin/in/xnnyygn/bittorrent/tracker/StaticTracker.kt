@@ -2,7 +2,7 @@ package `in`.xnnyygn.bittorrent.tracker
 
 import `in`.xnnyygn.bittorrent.peer.Peer
 
-class MockTracker(
+class StaticTracker(
     infoHash: ByteArray,
     selfPeer: Peer,
     private val interval: Int,
