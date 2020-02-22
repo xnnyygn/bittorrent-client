@@ -1,9 +1,7 @@
 package `in`.xnnyygn.bittorrent
 
 import `in`.xnnyygn.bittorrent.bencode.BEncodeElement
-import `in`.xnnyygn.bittorrent.bencode.BEncodeParser
 import `in`.xnnyygn.bittorrent.bencode.DictionaryElement
-import java.io.File
 
 data class TorrentInfoFile(val length: Long, val path: String)
 
@@ -13,19 +11,19 @@ class TorrentInfo(val files: List<TorrentInfoFile>, val name: String, val pieceL
     }
 }
 
-data class Torrent(val announce: String, val info: TorrentInfo) {
-    companion object {
-        fun fromFile(file: File): Torrent {
-            val parser = BEncodeParser(file.inputStream())
-            val element = parser.parse()
-            return buildTorrent(element)
-        }
+data class Torrent(val announce: String, val info: TorrentInfo, val infoHash: ByteArray) {
+    val allFileLength: Long
+        get() = info.files.map { it.length }.sum()
 
-        private fun buildTorrent(element: BEncodeElement): Torrent {
+    val pieceCount: Int
+        get() = (allFileLength / info.pieceLength).toInt()
+
+    companion object {
+        fun fromElement(element: BEncodeElement, infoHash: ByteArray): Torrent {
             val dictionary = element as DictionaryElement
             val announce = dictionary.getString("announce")
             val infoElement = dictionary.getDictionary("info")
-            return Torrent(announce, buildTorrentInfo(infoElement))
+            return Torrent(announce, buildTorrentInfo(infoElement), infoHash)
         }
 
         private fun buildTorrentInfo(element: BEncodeElement): TorrentInfo {

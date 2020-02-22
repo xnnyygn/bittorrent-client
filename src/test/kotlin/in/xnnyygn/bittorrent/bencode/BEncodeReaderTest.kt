@@ -8,7 +8,7 @@ import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 
-class BEncodeParserTest {
+class BEncodeReaderTest {
 
     @Test
     fun testParseInvalidNumberNoDigit() {
@@ -22,7 +22,7 @@ class BEncodeParserTest {
 
     private fun parse(bytes: ByteArray): BEncodeElement {
         val input: InputStream = ByteArrayInputStream(bytes)
-        return BEncodeParser(input).parse()
+        return BEncodeReader(input).parse()
     }
 
     @Test

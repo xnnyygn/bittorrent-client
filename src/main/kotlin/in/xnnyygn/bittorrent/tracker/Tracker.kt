@@ -1,38 +1,61 @@
 package `in`.xnnyygn.bittorrent.tracker
 
-import java.lang.RuntimeException
+import `in`.xnnyygn.bittorrent.peer.Peer
 
-enum class PeerEvent {
+internal enum class PeerEvent {
     STARTED,
     COMPLETED,
     STOPPED,
     EMPTY
 }
 
-data class FindPeerRequest(
+internal data class TrackerRequest(
     val infoHash: ByteArray,
     val peerId: ByteArray,
     val ip: String? = null,
     val port: Int,
-    val uploaded: Int,
-    val downloaded: Int,
-    val left: Int,
+    val uploaded: Long,
+    val downloaded: Long,
+    val left: Long,
     val event: PeerEvent = PeerEvent.EMPTY
 )
 
-data class Peer(val id: ByteArray, val ip: String, val port: Int)
+data class TrackerResponse(val interval: Int, val peers: List<Peer>)
 
-data class FindPeerResponse(val interval: Int, val peers: List<Peer>)
-
-class FindPeerException(msg: String, cause: Throwable?) : RuntimeException(msg, cause) {
+class TrackerException(msg: String, cause: Throwable?) : RuntimeException(msg, cause) {
     constructor(msg: String) : this(msg, null)
 }
 
 interface Tracker {
-    fun findPeers(request: FindPeerRequest): FindPeerResponse
+    suspend fun findPeers(clientStatus: ClientStatus, started: Boolean = false): TrackerResponse
+
+    suspend fun stop(clientStatus: ClientStatus)
 }
 
-class MockTracker(private val response: FindPeerResponse) :
-    Tracker {
-    override fun findPeers(request: FindPeerRequest) = response
+abstract class AbstractTracker(private val infoHash: ByteArray, private val selfPeer: Peer) : Tracker {
+    override suspend fun findPeers(clientStatus: ClientStatus, started: Boolean): TrackerResponse {
+        val event = when {
+            clientStatus.isCompleted -> PeerEvent.COMPLETED
+            started -> PeerEvent.STARTED
+            else -> PeerEvent.EMPTY
+        }
+        return send(makeRequest(clientStatus, event))
+    }
+
+    private fun makeRequest(clientStatus: ClientStatus, event: PeerEvent) = TrackerRequest(
+        infoHash,
+        selfPeer.id,
+        selfPeer.ip,
+        selfPeer.port,
+        clientStatus.uploaded,
+        clientStatus.downloaded,
+        clientStatus.left,
+        event
+    )
+
+    override suspend fun stop(clientStatus: ClientStatus) {
+        send(makeRequest(clientStatus, PeerEvent.STOPPED))
+    }
+
+    internal abstract suspend fun send(request: TrackerRequest): TrackerResponse
 }

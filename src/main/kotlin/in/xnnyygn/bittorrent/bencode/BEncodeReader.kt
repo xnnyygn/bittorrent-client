@@ -1,116 +1,65 @@
 package `in`.xnnyygn.bittorrent.bencode
 
 import java.io.InputStream
+import java.lang.IllegalStateException
+import java.security.MessageDigest
 
-sealed class BEncodeElement
-
-data class NumberElement(val value: Long) : BEncodeElement()
-
-class ByteStringElement(val bytes: ByteArray) : BEncodeElement() {
-
-    fun asString(): String = String(bytes)
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is ByteStringElement) return false
-
-        if (!bytes.contentEquals(other.bytes)) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        return bytes.contentHashCode()
-    }
-
-    override fun toString(): String {
-        return "ByteStringElement(bytes.size=${bytes.size})"
-    }
-}
-
-class DictionaryElement(private val map: Map<String, BEncodeElement>) : BEncodeElement() {
-
-    val size: Int
-        get() = map.size
-
-    fun contains(key: String): Boolean = map.contains(key)
-
-    fun getString(key: String): String = (map[key] as ByteStringElement).asString()
-
-    fun getNumber(key: String): Long = (map[key] as NumberElement).value
-
-    fun getByteString(key: String): ByteStringElement = (map[key] as ByteStringElement)
-
-    fun getList(key: String): ListElement = (map[key] as ListElement)
-
-    fun getDictionary(key: String): DictionaryElement = (map[key] as DictionaryElement)
-
-    override fun toString(): String {
-        return "DictionaryElement(dictionary=$map)"
-    }
-}
-
-data class ListElement(val elements: List<BEncodeElement>) : BEncodeElement()
-
-private class BEncodeBytes {
+private interface BasicInputStream {
     companion object {
-        const val BYTE_EOF: Int = -1
-        const val BYTE_ZERO = '0'.toInt()
-        const val BYTE_NINE = '9'.toInt()
-        const val BYTE_D = 'd'.toInt()
-        const val BYTE_E = 'e'.toInt()
-        const val BYTE_I = 'i'.toInt()
-        const val BYTE_L = 'l'.toInt()
-        const val BYTE_MINUS = '-'.toInt()
-        const val BYTE_COLON = ':'.toInt()
+        const val EOF = -1
     }
+
+    fun read(): Int
+    fun peek(): Int
+    fun skipByte(): Int
+    fun readBytes(length: Int): Pair<ByteArray, Int>
 }
 
-private class SingleByteBufferInputStream(private val input: InputStream) {
+private class SingleByteBufferInputStream(private val delegate: InputStream) : BasicInputStream {
     private var nextByte: Int? = null
 
-    fun read(): Int {
+    override fun read(): Int {
         if (nextByte != null) {
             val b: Int = nextByte!!
             nextByte = null
             return b
         }
-        return input.read()
+        return delegate.read()
     }
 
-    fun peek(): Int {
+    override fun peek(): Int {
         if (nextByte != null) {
             return nextByte!!
         }
-        val b = input.read()
-        if (b == BEncodeBytes.BYTE_EOF) { // EOS
-            return BEncodeBytes.BYTE_EOF
+        val b = delegate.read()
+        if (b == BasicInputStream.EOF) {
+            return BasicInputStream.EOF
         }
         nextByte = b
         return b
     }
 
-    fun skipByte(): Int {
+    override fun skipByte(): Int {
         if (nextByte == null) {
-            return input.read()
+            return delegate.read()
         }
         val b = nextByte!!
         nextByte = null
         return b
     }
 
-    fun readBytes(length: Int): Pair<ByteArray, Int> {
+    override fun readBytes(length: Int): Pair<ByteArray, Int> {
         require(length >= 0) { "length < 0" }
         if (length == 0) {
             return Pair(byteArrayOf(), 0)
         }
         val bytes = ByteArray(length)
         if (nextByte == null) {
-            return Pair(bytes, input.read(bytes))
+            return Pair(bytes, delegate.read(bytes))
         }
         bytes[0] = nextByte!!.toByte()
         nextByte = null
-        val bytesRead = input.read(bytes, 1, length - 1)
+        val bytesRead = delegate.read(bytes, 1, length - 1)
         if (bytesRead == -1) {
             return Pair(bytes, 1)
         }
@@ -118,7 +67,60 @@ private class SingleByteBufferInputStream(private val input: InputStream) {
     }
 }
 
-open class BEncodeException(msg: String) : RuntimeException(msg)
+private class Sha1MessageDigestInputStream(private val delegate: BasicInputStream) : BasicInputStream {
+
+    private val digest = MessageDigest.getInstance("SHA-1")
+    private var start = false
+    var result: ByteArray? = null
+        private set
+
+    override fun read(): Int {
+        val b = delegate.read()
+        updateIfStarted(b)
+        return b
+    }
+
+    private fun updateIfStarted(b: Int) {
+        if (!start) {
+            return
+        }
+        if (b == BasicInputStream.EOF) {
+            return
+        }
+        digest.update(b.toByte())
+    }
+
+    override fun peek(): Int = delegate.peek()
+
+    override fun skipByte(): Int {
+        val b = delegate.skipByte()
+        updateIfStarted(b)
+        return b
+    }
+
+    override fun readBytes(length: Int): Pair<ByteArray, Int> {
+        val pair = delegate.readBytes(length)
+        val (bytes, bytesRead) = pair
+        if (bytesRead > 0) {
+            digest.update(bytes)
+        }
+        return pair
+    }
+
+    fun startDigest() {
+        if (start) {
+            throw IllegalStateException("started")
+        }
+        start = true
+    }
+
+    fun doneDigest() {
+        if (result != null) {
+            throw IllegalStateException("done")
+        }
+        result = digest.digest()
+    }
+}
 
 class BEncodeUnexpectedByteException(val byte: Int, msg: String = "unexpected byte $byte") : BEncodeException(msg)
 
@@ -145,18 +147,17 @@ private enum class BEncodeTokenType(val byte: Int? = null) {
     }
 }
 
-class BEncodeParser private constructor(private val sbb: SingleByteBufferInputStream) {
+class BEncodeReader private constructor(private val input: Sha1MessageDigestInputStream) {
 
-    constructor(input: InputStream) : this(
-        SingleByteBufferInputStream(
-            input
-        )
-    )
+    constructor(input: InputStream) : this(Sha1MessageDigestInputStream(SingleByteBufferInputStream(input)))
+
+    val infoHash: ByteArray
+        get() = input.result ?: throw BEncodeException("parsing required")
 
     fun parse(): BEncodeElement = readElement(top = true)
 
     private fun readElement(top: Boolean = false): BEncodeElement {
-        val b = sbb.peek()
+        val b = input.peek()
         val element = when (BEncodeTokenType.fromByte(b)) {
             BEncodeTokenType.DICTIONARY_START -> readDictionaryElement()
             BEncodeTokenType.LIST_START -> readListElement()
@@ -174,7 +175,7 @@ class BEncodeParser private constructor(private val sbb: SingleByteBufferInputSt
     }
 
     private fun ensureNoMoreByte() {
-        val b = sbb.peek()
+        val b = input.peek()
         if (b != -1) {
             throw BEncodeUnexpectedByteException(
                 b,
@@ -190,9 +191,9 @@ class BEncodeParser private constructor(private val sbb: SingleByteBufferInputSt
         skipByte(BEncodeTokenType.LIST_START) // skip l
         val list = mutableListOf<BEncodeElement>()
         while (true) {
-            val b = sbb.peek()
+            val b = input.peek()
             val tokenType =
-                BEncodeTokenType.fromByte(sbb.peek())
+                BEncodeTokenType.fromByte(input.peek())
             if (tokenType == null || tokenType == BEncodeTokenType.EOF) {
                 throw BEncodeUnexpectedByteException(b)
             }
@@ -214,7 +215,7 @@ class BEncodeParser private constructor(private val sbb: SingleByteBufferInputSt
         skipByte(BEncodeTokenType.DICTIONARY_START)
         val map = mutableMapOf<String, BEncodeElement>()
         while (true) {
-            val b = sbb.peek()
+            val b = input.peek()
             val tokenType = BEncodeTokenType.fromByte(b)
             if (tokenType == BEncodeTokenType.END) {
                 skipByte(b)
@@ -228,7 +229,13 @@ class BEncodeParser private constructor(private val sbb: SingleByteBufferInputSt
                 )
             }
             val key = String(readByteString())
-            map[key] = readElement()
+            if (key == "info") {
+                input.startDigest()
+                map[key] = readElement()
+                input.doneDigest()
+            } else {
+                map[key] = readElement()
+            }
         }
         return DictionaryElement(map)
     }
@@ -250,7 +257,7 @@ class BEncodeParser private constructor(private val sbb: SingleByteBufferInputSt
         val length = readNumber(BEncodeBytes.BYTE_COLON).toInt()
         // : was read
         // if length was negative, it will be rejected by readBytes
-        val (bytes, bytesRead) = sbb.readBytes(length)
+        val (bytes, bytesRead) = input.readBytes(length)
         if (bytesRead != length) throw BEncodeException("expect $length to read, but was $bytesRead")
         return bytes
     }
@@ -261,7 +268,7 @@ class BEncodeParser private constructor(private val sbb: SingleByteBufferInputSt
     }
 
     private fun skipByte(expectedByte: Int) {
-        val b = sbb.skipByte()
+        val b = input.skipByte()
         if (b != expectedByte) {
             throw BEncodeUnexpectedByteException(
                 expectedByte,
@@ -274,7 +281,7 @@ class BEncodeParser private constructor(private val sbb: SingleByteBufferInputSt
      * <sign-or-digit><digit*>e
      */
     private fun readNumber(sentinel: Int): Long {
-        val signOrDigit = sbb.read()
+        val signOrDigit = input.read()
         var n: Long = 0
         if (BEncodeTokenType.isDigit(signOrDigit)) {
             n = (signOrDigit - BEncodeBytes.BYTE_ZERO).toLong()
@@ -286,7 +293,7 @@ class BEncodeParser private constructor(private val sbb: SingleByteBufferInputSt
         }
         var d: Int
         while (true) {
-            d = sbb.read()
+            d = input.read()
             if (d == -1) throw BEncodeUnexpectedByteException(
                 -1,
                 "unexpected EOF"
