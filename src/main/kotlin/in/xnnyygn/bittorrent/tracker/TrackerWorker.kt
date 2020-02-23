@@ -3,7 +3,6 @@ package `in`.xnnyygn.bittorrent.tracker
 import `in`.xnnyygn.bittorrent.eventbus.Event
 import `in`.xnnyygn.bittorrent.eventbus.EventBus
 import `in`.xnnyygn.bittorrent.eventbus.QueueName
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -56,7 +55,7 @@ class TrackerWorker(
         try {
             val response = tracker.findPeers(clientUploaded, clientDownloaded, clientRemaining, r)
             logger.info("got ${response.peers.size} peers from tracker, refresh ${response.interval}s later")
-            eventBus.offer(QueueName.HANDSHAKE, PeerListEvent(response.peers))
+            eventBus.offer(QueueName.HANDSHAKE_ALL, PeerListEvent(response.peers))
             if (r) {
                 firstRequest = false
             }

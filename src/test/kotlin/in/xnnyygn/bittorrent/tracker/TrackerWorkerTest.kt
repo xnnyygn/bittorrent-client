@@ -47,7 +47,7 @@ class TrackerWorkerTest {
             val job = launch { worker.start() }
             delay(1500)
             job.cancel()
-            val events = eventBus.bulkPoll(QueueName.HANDSHAKE)
+            val events = eventBus.bulkPoll(QueueName.HANDSHAKE_ALL)
             assertEquals(2, events.size)
             assertEquals(peers, (events[0] as PeerListEvent).peers)
         }
@@ -77,7 +77,7 @@ class TrackerWorkerTest {
             val job = launch { worker.start() }
             delay(2500)
             job.cancel()
-            val events = eventBus.bulkPoll(QueueName.HANDSHAKE)
+            val events = eventBus.bulkPoll(QueueName.HANDSHAKE_ALL)
             assertEquals(2, events.size)
             assertEquals(peers, (events[0] as PeerListEvent).peers)
         }
@@ -108,7 +108,7 @@ class TrackerWorkerTest {
             val job = launch { worker.start() }
             delay(2500)
             job.cancel()
-            val events = eventBus.bulkPoll(QueueName.HANDSHAKE)
+            val events = eventBus.bulkPoll(QueueName.HANDSHAKE_ALL)
             assertEquals(2, events.size)
             assertEquals(peers, (events[0] as PeerListEvent).peers)
         }

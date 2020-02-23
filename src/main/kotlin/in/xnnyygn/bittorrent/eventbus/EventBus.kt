@@ -3,7 +3,7 @@ package `in`.xnnyygn.bittorrent.eventbus
 class EventBus {
     private val queueMap: Map<QueueName, EventQueue<Event>> = mapOf(
         QueueName.TRACKER to EventQueue(),
-        QueueName.HANDSHAKE to EventQueue(),
+        QueueName.HANDSHAKE_ALL to EventQueue(),
         QueueName.TRANSMISSION to EventQueue(),
         QueueName.PIECE_CACHE to EventQueue(),
         QueueName.FILE to EventQueue()

@@ -100,8 +100,8 @@ class IncomingSocket(delegate: AsynchronousSocketChannel) : AbstractPeerSocket(d
 
 class OutgoingPeerSocket(val peer: Peer) : AbstractPeerSocket(AsynchronousSocketChannel.open()) {
 
-    suspend fun connect(ip: String, port: Int): Unit = suspendCoroutine { cont ->
-        delegate.connect(InetSocketAddress(ip, port), cont, ConnectCompletionHandler())
+    suspend fun connect(): Unit = suspendCoroutine { cont ->
+        delegate.connect(InetSocketAddress(peer.ip, peer.port), cont, ConnectCompletionHandler())
     }
 
     inner class ConnectCompletionHandler : CompletionHandler<Void, Continuation<Unit>> {

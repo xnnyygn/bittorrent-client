@@ -2,7 +2,7 @@ package `in`.xnnyygn.bittorrent.eventbus
 
 enum class QueueName {
     TRACKER,
-    HANDSHAKE,
+    HANDSHAKE_ALL,
     TRANSMISSION,
     PIECE_CACHE,
     FILE

@@ -6,7 +6,6 @@ import `in`.xnnyygn.bittorrent.eventbus.QueueName
 import `in`.xnnyygn.bittorrent.file.PiecesStatus
 import `in`.xnnyygn.bittorrent.tracker.ClientStatus
 import `in`.xnnyygn.bittorrent.worker.AbstractWorker
-import kotlinx.coroutines.CoroutineDispatcher
 
 private class GlobalDownloadStrategy(pieceCount: Int, private val piecesStatus: PiecesStatus) {
     private val pieceMap = List(pieceCount) { mutableSetOf<PeerSession>() }
@@ -69,7 +68,7 @@ private class SessionList(
     fun closeAndRemove(session: PeerSession) {
         session.close()
         session.peer?.let { peer ->
-            eventBus.offer(QueueName.HANDSHAKE, PeerDisconnectedEvent(peer))
+            eventBus.offer(QueueName.HANDSHAKE_ALL, PeerDisconnectedEvent(peer))
         }
         set.remove(session)
     }
