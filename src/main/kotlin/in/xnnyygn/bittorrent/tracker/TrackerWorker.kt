@@ -25,6 +25,7 @@ class TrackerWorker(
     private var clientUploaded = 0L
     private var clientDownloaded = 0L
 
+    // TODO move firstRequest etc into start method
     suspend fun start(context: CoroutineContext = EmptyCoroutineContext) {
         withContext(context) {
             try {
@@ -32,7 +33,7 @@ class TrackerWorker(
                 while (isActive) {
                     for (event in eventBus.bulkPoll(QueueName.TRACKER)) {
                         when (event) {
-                            // TODO test launch in single thread dispatcher
+                            // TODO copy as value, resume in same thread?, update data by message
                             is FindPeersEvent -> launch { findPeersAndAwait() }
                             is ClientUploadedEvent -> clientUploaded += event.uploadedBytes
                             is ClientDownloadedEvent -> clientDownloaded += event.downloadedBytes

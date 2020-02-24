@@ -3,6 +3,7 @@ package `in`.xnnyygn.bittorrent.peer
 import `in`.xnnyygn.bittorrent.eventbus.Event
 import kotlinx.coroutines.CompletableDeferred
 import java.io.EOFException
+import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
@@ -93,6 +94,13 @@ sealed class AbstractPeerSocket(protected val delegate: AsynchronousSocketChanne
     override fun close() {
         closed = true
         delegate.close()
+    }
+}
+
+fun PeerSocket.closeQuietly() {
+    try {
+        this.close()
+    } catch (e: IOException) {
     }
 }
 

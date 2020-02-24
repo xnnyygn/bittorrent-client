@@ -41,13 +41,6 @@ private class DefaultOutgoingHandshake(private val handshakeProtocol: HandshakeP
         logger.warn("failed to handshake to peer ${socket.peer}, cause [${e.message}]")
         false
     }
-
-    private fun PeerSocket.closeQuietly() {
-        try {
-            this.close()
-        } catch (e: IOException) {
-        }
-    }
 }
 
 /**
