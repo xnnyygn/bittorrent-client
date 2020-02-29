@@ -6,7 +6,6 @@ import `in`.xnnyygn.bittorrent.eventbus.PoisonPillEvent
 import `in`.xnnyygn.bittorrent.eventbus.QueueName
 import `in`.xnnyygn.bittorrent.tracker.PeerListEvent
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -15,7 +14,7 @@ import org.junit.Ignore
 import org.junit.Test
 import java.nio.ByteBuffer
 
-private class MockPeerSocket : PeerSocket {
+private class EmptyPeerSocket : PeerSocket {
     override val isClosed: Boolean
         get() = TODO("not implemented")
 
@@ -24,7 +23,7 @@ private class MockPeerSocket : PeerSocket {
     override suspend fun read(buffer: ByteBuffer): Int = TODO("not implemented")
 
     override fun <T> read(buffer: ByteBuffer, attachment: T, readQueue: MyQueue<Event>) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override suspend fun readFully(buffer: ByteBuffer, expectedBytesToRead: Int) {
@@ -42,7 +41,7 @@ class HandshakeAllWorkerTest {
         val outgoingHandshake = object : OutgoingHandshake {
             override suspend fun handshake(peer: Peer): PeerSocket? {
                 println("handshake successfully")
-                return MockPeerSocket()
+                return EmptyPeerSocket()
             }
         }
         val eventBus = EventBus()
@@ -71,7 +70,7 @@ class HandshakeAllWorkerTest {
                     null
                 } else {
                     println("handshake successfully")
-                    MockPeerSocket()
+                    EmptyPeerSocket()
                 }
             }
         }

@@ -26,7 +26,6 @@ interface PeerSocket {
     suspend fun readFully(buffer: ByteBuffer, expectedBytesToRead: Int = buffer.capacity())
 
     fun close()
-
 }
 
 data class ReadEvent<T>(
