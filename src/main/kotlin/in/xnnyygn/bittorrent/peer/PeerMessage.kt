@@ -40,7 +40,11 @@ data class BitFieldMessage(val piecesStatus: PiecesStatus) : PeerMessage() {
     constructor(bytes: ByteArray) : this(BitSetPiecesStatus(BitSet.valueOf(bytes), 0))
 }
 
-data class RequestMessage(val index: Int, val begin: Long, val length: Long) : PeerMessage() {
+sealed class AbstractRequestMessage(val messageType: Byte, val index: Int, val begin: Long, val length: Long) :
+    PeerMessage()
+
+class RequestMessage(index: Int, begin: Long, length: Long) :
+    AbstractRequestMessage(PeerMessageTypes.REQUEST, index, begin, length) {
     constructor(pieceRequest: PieceRequest) : this(pieceRequest.index, pieceRequest.begin, pieceRequest.length)
 }
 
@@ -49,6 +53,7 @@ data class PieceMessage(val index: Int, val begin: Long, val piece: ByteBuffer) 
     constructor(index: Int, begin: Long, piece: ByteArray) : this(index, begin, ByteBuffer.wrap(piece))
 }
 
-data class CancelMessage(val index: Int, val begin: Long, val length: Long) : PeerMessage() {
+class CancelMessage(index: Int, begin: Long, length: Long) :
+    AbstractRequestMessage(PeerMessageTypes.CANCEL, index, begin, length) {
     constructor(pieceRequest: PieceRequest) : this(pieceRequest.index, pieceRequest.begin, pieceRequest.length)
 }

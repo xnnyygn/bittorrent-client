@@ -50,6 +50,7 @@ class PeerMessageDecoderTest {
         }
     }
 
+    // TODO replace with buildByteArray
     private fun writeAndGetByteArray(consumer: DataOutputStream.() -> Unit): ByteArray {
         val byteOut = ByteArrayOutputStream()
         val dataOut = DataOutputStream(byteOut)

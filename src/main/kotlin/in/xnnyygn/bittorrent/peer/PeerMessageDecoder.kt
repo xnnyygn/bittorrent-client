@@ -100,6 +100,7 @@ private class PieceDecoderState(payloadLength: Int, private val start: StartDeco
         if (bytesInBuffer == 0) {
             return this
         }
+        // TODO extract function
         val bytesToTransfer = ((1 shl 16) - offset).coerceAtMost(bytesInBuffer)
         buffer.get(piece, offset, bytesToTransfer)
         offset += bytesToTransfer
@@ -209,6 +210,7 @@ internal class BitFieldDecoderState(private val payloadLength: Int, private val 
     }
 }
 
+// TODO rename to reader
 class PeerMessageDecoder(private val socket: PeerSocket) {
     private val buffer: ByteBuffer = ByteBuffer.allocateDirect(4 + 1 + 8 + 8 + (1 shl 16))
     private var state: DecoderState = StartDecoderState
@@ -218,8 +220,7 @@ class PeerMessageDecoder(private val socket: PeerSocket) {
         buffer.flip() // to read mode
         val messages = mutableListOf<PeerMessage>()
         state = state.decode(buffer, messages)
-        buffer.compact()
-        buffer.flip() // to write mode
+        buffer.compact() // to write mode
         return messages
     }
 }
