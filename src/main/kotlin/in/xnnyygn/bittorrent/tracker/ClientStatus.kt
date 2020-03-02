@@ -2,6 +2,7 @@ package `in`.xnnyygn.bittorrent.tracker
 
 import java.util.concurrent.atomic.AtomicLong
 
+// like a typed actor
 @Deprecated("switch to message")
 class ClientStatus private constructor(
     private val _uploaded: AtomicLong,

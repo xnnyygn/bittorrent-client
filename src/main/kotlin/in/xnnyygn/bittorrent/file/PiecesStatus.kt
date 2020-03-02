@@ -4,6 +4,7 @@ import java.util.BitSet
 
 interface PiecesStatus {
     val isEmpty: Boolean
+    val pieceCount: Int
     fun toByteArray(): ByteArray
     fun pieces(): Iterator<Int>
     fun missingPieces(): Iterator<Int>
@@ -39,7 +40,7 @@ private class BitSetPieceStatusMissingPiecesIterator(
     }
 }
 
-class BitSetPiecesStatus(private val bitSet: BitSet, private val pieceCount: Int) :
+class BitSetPiecesStatus(private val bitSet: BitSet, override val pieceCount: Int) :
     PiecesStatus {
     constructor(pieceCount: Int) : this(BitSet(pieceCount), pieceCount)
 
@@ -131,7 +132,7 @@ private class BitSetWithBufferPieceStatusMissingPiecesIterator(
     override fun next(): Int = nextItem!!
 }
 
-class BitSetWithBufferPiecesStatus(bitSet: BitSet, private val pieceCount: Int, private val bufferSize: Int) :
+class BitSetWithBufferPiecesStatus(bitSet: BitSet, override val pieceCount: Int, private val bufferSize: Int) :
     PiecesStatus {
     // TODO change to atomic reference
     @Volatile

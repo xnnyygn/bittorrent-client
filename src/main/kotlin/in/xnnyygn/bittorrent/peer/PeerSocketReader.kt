@@ -1,6 +1,9 @@
 package `in`.xnnyygn.bittorrent.peer
 
+import `in`.xnnyygn.bittorrent.eventbus.Event
+import `in`.xnnyygn.bittorrent.eventbus.EventQueue
 import java.nio.ByteBuffer
+import java.nio.channels.CompletionHandler
 
 internal interface DecoderState {
     fun decode(buffer: ByteBuffer, messages: MutableList<PeerMessage>): DecoderState
@@ -210,17 +213,35 @@ internal class BitFieldDecoderState(private val payloadLength: Int, private val 
     }
 }
 
-// TODO rename to reader
-class PeerMessageDecoder(private val socket: PeerSocket) {
+internal data class PeerMessageReadEvent(val messages: List<PeerMessage>) : Event
+internal data class IoExceptionEvent(val cause: Throwable) : Event
+
+class PeerSocketReader(private val socket: PeerSocket) {
     private val buffer: ByteBuffer = ByteBuffer.allocateDirect(4 + 1 + 8 + 8 + (1 shl 16))
     private var state: DecoderState = StartDecoderState
 
-    suspend fun decode(): List<PeerMessage> {
-        socket.read(buffer)
+    fun read(eventQueue: EventQueue<Event>) {
+        socket.read(buffer, Unit, object : CompletionHandler<Int, Unit?> {
+            override fun completed(result: Int?, attachment: Unit?) {
+                eventQueue.offer(PeerMessageReadEvent(decode()))
+            }
+
+            override fun failed(exception: Throwable?, attachment: Unit?) {
+                eventQueue.offer(IoExceptionEvent(exception!!))
+            }
+        })
+    }
+
+    private fun decode(): List<PeerMessage> {
         buffer.flip() // to read mode
         val messages = mutableListOf<PeerMessage>()
         state = state.decode(buffer, messages)
         buffer.compact() // to write mode
         return messages
+    }
+
+    suspend fun read(): List<PeerMessage> {
+        socket.read(buffer)
+        return decode()
     }
 }

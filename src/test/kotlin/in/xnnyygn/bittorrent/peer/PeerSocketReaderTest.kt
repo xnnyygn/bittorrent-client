@@ -36,15 +36,15 @@ private class MockPeerSocketForDecoder(private val bytes: ByteArray) : PeerSocke
     }
 }
 
-class PeerMessageDecoderTest {
+class PeerSocketReaderTest {
     @Test
     fun testKeepAlive() {
         val bytes = writeAndGetByteArray {
             writeInt(0)
         }
-        val decoder = PeerMessageDecoder(MockPeerSocketForDecoder(bytes))
+        val decoder = PeerSocketReader(MockPeerSocketForDecoder(bytes))
         runBlocking {
-            val messages = decoder.decode()
+            val messages = decoder.read()
             assertEquals(1, messages.size)
             assertEquals(KeepAliveMessage, messages[0])
         }
@@ -64,9 +64,9 @@ class PeerMessageDecoderTest {
             writeInt(0)
             writeByte(0)
         }
-        val decoder = PeerMessageDecoder(MockPeerSocketForDecoder(bytes))
+        val decoder = PeerSocketReader(MockPeerSocketForDecoder(bytes))
         runBlocking {
-            val messages = decoder.decode()
+            val messages = decoder.read()
             assertEquals(1, messages.size)
             assertEquals(KeepAliveMessage, messages[0])
         }
@@ -101,9 +101,9 @@ class PeerMessageDecoderTest {
             writeInt(5)
             writeByte(4)
         }
-        val decoder = PeerMessageDecoder(MockPeerSocketForDecoder(bytes))
+        val decoder = PeerSocketReader(MockPeerSocketForDecoder(bytes))
         runBlocking {
-            val messages = decoder.decode()
+            val messages = decoder.read()
             assertEquals(0, messages.size)
         }
 //        decoder.inspect()

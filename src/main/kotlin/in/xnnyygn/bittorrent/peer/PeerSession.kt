@@ -11,7 +11,9 @@ import `in`.xnnyygn.bittorrent.tracker.ClientStatus
 import java.nio.ByteBuffer
 
 private sealed class AbstractTransmissionProtocol(
-    protected val connection: PeerConnection
+    protected val connection: PeerConnection,
+    protected val localPiecesStatus: PiecesStatus,
+    protected val clientStatus: ClientStatus
 ) {
     protected var chokedByRemote: Boolean = false
 
@@ -25,13 +27,13 @@ private sealed class AbstractTransmissionProtocol(
 }
 
 private class DownloadProtocol(
-    pieceCount: Int,
     connection: PeerConnection,
-    private val clientStatus: ClientStatus,
+    localPiecesStatus: PiecesStatus,
+    clientStatus: ClientStatus,
     private val eventPublisher: EventPublisher
-) : AbstractTransmissionProtocol(connection) {
+) : AbstractTransmissionProtocol(connection, localPiecesStatus, clientStatus) {
     private var interestedByLocal: Boolean = false
-    private var pieceStatus = BitSetPiecesStatus(pieceCount)
+    private var remotePieceStatus = BitSetPiecesStatus(localPiecesStatus.pieceCount)
     private var lastRequestToRemote: PieceRequest? = null
 
     fun bitField(piecesStatus: PiecesStatus) {
@@ -50,7 +52,7 @@ private class DownloadProtocol(
     }
 
     private fun sendRequest(index: Int, begin: Long, length: Long) {
-        connection.writeMessage(RequestMessage(index, begin, length))
+        connection.write(RequestMessage(index, begin, length))
         eventPublisher.sendRequestToRemote(PieceRequest(index, begin, length))
     }
 
@@ -88,10 +90,11 @@ private class PieceLoader(size: Int, private val eventPublisher: EventPublisher)
 
 private class UploadProtocol(
     connection: PeerConnection,
-    private val clientStatus: ClientStatus,
+    localPiecesStatus: PiecesStatus,
+    clientStatus: ClientStatus,
     eventPublisher: EventPublisher
 ) :
-    AbstractTransmissionProtocol(connection) {
+    AbstractTransmissionProtocol(connection, localPiecesStatus, clientStatus) {
     private var chokedByLocal: Boolean = true
     private var interestedByRemote: Boolean = false
     private var lastRequestFromRemote: PieceRequest? = null
@@ -124,11 +127,7 @@ private class UploadProtocol(
     }
 }
 
-private data class RequestMoreEvent(val index: Int) : Event
-
 data class SendRequestToRemoteEvent(val pieceRequest: PieceRequest, val session: PeerSession) : Event
-
-private data class CancelRequestEvent(val pieceRequest: PieceRequest) : Event
 
 private interface EventPublisher {
     fun sendRequestToRemote(pieceRequest: PieceRequest)
@@ -136,8 +135,8 @@ private interface EventPublisher {
 }
 
 class PeerSession(
-    private val pieceCount: Int,
     private val connection: PeerConnection,
+    private val localPiecesStatus: PiecesStatus,
     clientStatus: ClientStatus,
     private val eventBus: EventBus
 ) {
@@ -153,46 +152,54 @@ class PeerSession(
             eventBus.offer(QueueName.PIECE_CACHE, event)
         }
     }
-    private val downloadProtocol = DownloadProtocol(pieceCount, connection, clientStatus, eventPublisher)
-    private val uploadProtocol = UploadProtocol(connection, clientStatus, eventPublisher)
+    private val downloadProtocol = DownloadProtocol(connection, localPiecesStatus, clientStatus, eventPublisher)
+    private val uploadProtocol = UploadProtocol(connection, localPiecesStatus, clientStatus, eventPublisher)
 
     val peer: Peer?
         get() = connection.peer
 
-    suspend fun start(localPiecesStatus: PiecesStatus) {
+    suspend fun start() {
         if (!localPiecesStatus.isEmpty) {
-            connection.writeMessage(BitFieldMessage(localPiecesStatus))
+            connection.write(BitFieldMessage(localPiecesStatus))
         }
-        connection.readAndWrite(pieceCount) { message ->
-            when (message) {
-                is ChokeMessage -> chokedByRemote()
-                is UnchokeMessage -> unchokeByRemote()
-                is InterestedMessage -> interestedByRemote()
-                is UninterestedMessage -> uninterestedByRemote()
-                is BitFieldMessage -> bitField(message)
-                is HaveMessage -> have(message)
-                is RequestMessage -> request(message)
-                is PieceMessage -> piece(message)
-                is CancelMessage -> cancel(message)
-                else -> throw IllegalStateException("unexpected message $message")
+        connection.eventLoop { messages ->
+            for (message in messages) {
+                when (message) {
+                    is ChokeMessage -> chokedByRemote()
+                    is UnchokeMessage -> unchokeByRemote()
+                    is InterestedMessage -> interestedByRemote()
+                    is UninterestedMessage -> uninterestedByRemote()
+                    is BitFieldMessage -> bitField(message)
+                    is HaveMessage -> have(message)
+                    is RequestMessage -> request(message)
+                    is PieceMessage -> piece(message)
+                    is CancelMessage -> cancel(message)
+                    else -> throw IllegalStateException("unexpected message $message")
+                }
             }
         }
-        // handle send request event
-        // handle cancel request event
-        // handle piece cache loaded event
     }
 
     fun requestMore(index: Int) {
-        // process in connection event loop
+        connection.runInEventLoop {
+            // download protocol
+            // connection.write(RequestMessage(index, 0, 1 shl 16))
+        }
     }
 
     fun requestLess(pieceRequest: PieceRequest) {
+        connection.runInEventLoop {
+            // connection.write(CancelMessage(pieceRequest))
+        }
     }
 
     fun pieceCacheLoaded(index: Int, cache: PieceCache) {
+        connection.runInEventLoop {
+
+        }
     }
 
-    private fun publish(message: PeerMessage) {
+    private fun publishToTransmission(message: PeerMessage) {
         eventBus.offer(QueueName.TRANSMISSION, PeerMessageEvent(message, this))
     }
 
@@ -216,12 +223,12 @@ class PeerSession(
 
     private fun bitField(message: BitFieldMessage) {
         downloadProtocol.bitField(message.piecesStatus)
-        publish(message)
+        publishToTransmission(message)
     }
 
     private fun have(message: HaveMessage) {
         downloadProtocol.have(message.index)
-        publish(message)
+        publishToTransmission(message)
     }
 
     private fun request(message: RequestMessage) {

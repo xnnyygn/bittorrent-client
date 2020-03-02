@@ -52,7 +52,7 @@ private fun ByteBuffer.isFull(): Boolean = (position() == limit())
 class PeerSocketWriter(private val socket: PeerSocket) {
     private val buffer: ByteBuffer = ByteBuffer.allocateDirect(4 + 1 + 8 + 8 + (1 shl 16))
 
-    suspend fun write(vararg messages: PeerMessage) {
+    suspend fun write(messages: List<PeerMessage>) {
         var completed: Boolean
         for (message in messages) {
             do {

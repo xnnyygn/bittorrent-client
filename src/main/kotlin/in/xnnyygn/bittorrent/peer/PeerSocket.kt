@@ -21,7 +21,7 @@ interface PeerSocket {
 
     suspend fun read(buffer: ByteBuffer): Int
 
-    fun <T> read(buffer: ByteBuffer, attachment: T, readQueue: MyQueue<Event>)
+    fun <T> read(buffer: ByteBuffer, attachment: T?, handler: CompletionHandler<Int, T?>)
 
     suspend fun readFully(buffer: ByteBuffer, expectedBytesToRead: Int = buffer.capacity())
 
@@ -60,16 +60,8 @@ sealed class AbstractPeerSocket(protected val delegate: AsynchronousSocketChanne
         }
     }
 
-    override fun <T> read(buffer: ByteBuffer, attachment: T, readQueue: MyQueue<Event>) {
-        delegate.read(buffer, attachment, object : CompletionHandler<Int, T> {
-            override fun completed(result: Int?, attachment: T) {
-                readQueue.offer(ReadEvent(buffer, attachment, bytesRead = result))
-            }
-
-            override fun failed(exception: Throwable?, attachment: T) {
-                readQueue.offer(ReadEvent(buffer, attachment, exception = exception))
-            }
-        })
+    override fun <T> read(buffer: ByteBuffer, attachment: T?, handler: CompletionHandler<Int, T?>) {
+        delegate.read(buffer, attachment, handler)
     }
 
     override suspend fun read(buffer: ByteBuffer): Int = suspendCoroutine { cont ->

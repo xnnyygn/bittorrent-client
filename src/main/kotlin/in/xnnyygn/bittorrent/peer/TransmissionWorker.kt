@@ -49,17 +49,17 @@ private class GlobalDownloadStrategy(pieceCount: Int, private val piecesStatus: 
 }
 
 private class SessionList(
-    private val pieceCount: Int,
     private val clientStatus: ClientStatus,
     private val eventBus: EventBus
 ) {
     private val set = mutableSetOf<PeerSession>()
 
     suspend fun addAndStart(connection: PeerConnection, localPiecesStatus: PiecesStatus) {
-        val session = PeerSession(pieceCount, connection, clientStatus, eventBus)
+        // TODO copy local piece status
+        val session = PeerSession(connection, localPiecesStatus, clientStatus, eventBus)
         set.add(session)
         try {
-            session.start(localPiecesStatus)
+            session.start()
         } finally {
             closeAndRemove(session)
         }
@@ -81,7 +81,7 @@ class TransmissionWorker(
 ) : AbstractWorker(QueueName.TRANSMISSION) {
 
     private val sessionList =
-        SessionList(pieceCount, clientStatus, eventBus)
+        SessionList(clientStatus, eventBus)
     private val globalDownloadStrategy =
         GlobalDownloadStrategy(pieceCount, localPiecesStatus)
 
