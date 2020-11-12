@@ -1,5 +1,6 @@
 package `in`.xnnyygn.bittorrent.peer
 
+import `in`.xnnyygn.bittorrent.tracker.Peer
 import kotlinx.coroutines.runBlocking
 import org.junit.Ignore
 import org.junit.Test
@@ -14,7 +15,13 @@ class HandshakeProtocolTest {
         val protocol = HandshakeProtocol(infoHash, ByteArray(20))
         runBlocking {
             repeat(3) {
-                val socket = OutgoingPeerSocket(Peer(peerId, "localhost", 6881))
+                val socket = OutgoingPeerSocket(
+                    Peer(
+                        peerId,
+                        "localhost",
+                        6881
+                    )
+                )
                 socket.connect()
                 val result = protocol.send(socket, peerId)
                 println("handshake $result")

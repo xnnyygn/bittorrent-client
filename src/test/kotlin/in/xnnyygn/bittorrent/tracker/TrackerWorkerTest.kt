@@ -2,7 +2,6 @@ package `in`.xnnyygn.bittorrent.tracker
 
 import `in`.xnnyygn.bittorrent.eventbus.EventBus
 import `in`.xnnyygn.bittorrent.eventbus.QueueName
-import `in`.xnnyygn.bittorrent.peer.Peer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -123,7 +122,13 @@ class TrackerWorkerTest {
     @Test
     fun testAddUploaded() {
         val mockTracker = makeMockTracker {
-            val peers = listOf(Peer(ByteArray(20), "localhost", 6882))
+            val peers = listOf(
+                Peer(
+                    ByteArray(20),
+                    "localhost",
+                    6882
+                )
+            )
             TrackerResponse(1, peers)
         }
         val eventBus = EventBus()

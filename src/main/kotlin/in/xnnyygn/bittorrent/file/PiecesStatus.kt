@@ -10,6 +10,7 @@ interface PiecesStatus {
     fun missingPieces(): Iterator<Int>
     fun hasPiece(index: Int): Boolean
     fun addPiece(index: Int)
+    fun duplicate(): PiecesStatus = TODO()
 }
 
 private class BitSetPieceStatusMissingPiecesIterator(
@@ -138,6 +139,7 @@ class BitSetWithBufferPiecesStatus(bitSet: BitSet, override val pieceCount: Int,
     @Volatile
     private var delegate: BitSetPiecesStatus =
         BitSetPiecesStatus(bitSet, pieceCount)
+
     @Volatile
     private var buffer = BitSetBuffer(bufferSize)
 

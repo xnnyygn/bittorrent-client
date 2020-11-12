@@ -21,6 +21,7 @@ private class Consumer<T>(val continuation: CancellableContinuation<T>) : Cancel
     fun casResumeBy(newStatus: Int): Boolean = resumeBy.compareAndSet(RESUME_BY_INIT, newStatus)
 }
 
+// rename to XXXQueue
 class EventQueue<T> {
     private val top = AtomicReference<EventQueueNode<T>>(null)
     private val consumer = AtomicReference<Consumer<List<T>>>(null)

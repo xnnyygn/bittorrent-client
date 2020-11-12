@@ -1,29 +1,47 @@
 package `in`.xnnyygn.bittorrent.tracker
 
-import java.util.concurrent.atomic.AtomicLong
+import `in`.xnnyygn.bittorrent.worker.Event
 
-// like a typed actor
-@Deprecated("switch to message")
-class ClientStatus private constructor(
-    private val _uploaded: AtomicLong,
-    private val _downloaded: AtomicLong,
-    private val _left: AtomicLong
+internal data class ClientDownloadedEvent(val downloadedBytes: Int) :
+    Event
+internal data class ClientUploadedEvent(val uploadedBytes: Int) :
+    Event
+internal data class ClientRemainingEvent(val remainingBytes: Long) :
+    Event
+
+// TODO rename?
+class ClientStatus(
+    private var _uploaded: Long = 0L,
+    private var _downloaded: Long = 0L,
+    private var _left: Long
 ) {
-    var uploaded: Long
-        get() = _uploaded.get()
-        set(value) = _uploaded.lazySet(value)
-    var downloaded: Long
-        get() = _downloaded.get()
-        set(value) = _downloaded.lazySet(value)
+    val uploaded: Long
+        get() = _uploaded
+    val downloaded: Long
+        get() = _downloaded
     var left: Long
-        get() = _left.get()
-        set(value) = _left.lazySet(value)
-    val isCompleted: Boolean
-        get() = (_left.get() == 0L)
+        get() = _left
+        internal set(value) {
+            _left = value
+        }
 
-    constructor(uploaded: Long = 0, downloaded: Long = 0, left: Long = 0) : this(
-        _uploaded = AtomicLong(uploaded),
-        _downloaded = AtomicLong(downloaded),
-        _left = AtomicLong(left)
-    )
+    internal fun addDownloaded(bytes: Int) {
+        _downloaded += bytes
+    }
+
+    internal fun addUploaded(bytes: Int) {
+        _uploaded += bytes
+    }
+
+    fun downloaded(bytes: Int) {
+//        eventBus.offer(QueueName.TRACKER, ClientDownloadedEvent(bytes))
+    }
+
+    fun uploaded(bytes: Int) {
+//        eventBus.offer(QueueName.TRACKER, ClientUploadedEvent(bytes))
+    }
+
+    fun remaining(bytes: Long) {
+//        eventBus.offer(QueueName.TRACKER, ClientRemainingEvent(bytes))
+    }
 }

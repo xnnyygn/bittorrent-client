@@ -1,6 +1,13 @@
 package `in`.xnnyygn.bittorrent.peer
 
-import `in`.xnnyygn.bittorrent.eventbus.Event
+import `in`.xnnyygn.bittorrent.worker.Event
+import `in`.xnnyygn.bittorrent.net.CancelMessage
+import `in`.xnnyygn.bittorrent.net.ChokeMessage
+import `in`.xnnyygn.bittorrent.net.KeepAliveMessage
+import `in`.xnnyygn.bittorrent.net.PeerMessage
+import `in`.xnnyygn.bittorrent.net.PeerMessageTypes
+import `in`.xnnyygn.bittorrent.net.PieceMessage
+import `in`.xnnyygn.bittorrent.net.RequestMessage
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Ignore

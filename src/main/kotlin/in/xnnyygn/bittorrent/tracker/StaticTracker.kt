@@ -1,7 +1,5 @@
 package `in`.xnnyygn.bittorrent.tracker
 
-import `in`.xnnyygn.bittorrent.peer.Peer
-
 class StaticTracker(
     infoHash: ByteArray,
     selfPeer: Peer,

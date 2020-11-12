@@ -1,9 +1,10 @@
 package `in`.xnnyygn.bittorrent.peer
 
-import `in`.xnnyygn.bittorrent.eventbus.Event
+import `in`.xnnyygn.bittorrent.worker.Event
 import `in`.xnnyygn.bittorrent.eventbus.EventBus
 import `in`.xnnyygn.bittorrent.eventbus.PoisonPillEvent
 import `in`.xnnyygn.bittorrent.eventbus.QueueName
+import `in`.xnnyygn.bittorrent.tracker.Peer
 import `in`.xnnyygn.bittorrent.tracker.PeerListEvent
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
